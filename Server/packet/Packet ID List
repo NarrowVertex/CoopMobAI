@@ -1,0 +1,6 @@
+서버Side
+<-CreateMapPacket			0
+<-CreateEntity              1
+<-MoveEntity                2
+<-MoveEntity                3
+<-CreateTraceMapPacket      4
