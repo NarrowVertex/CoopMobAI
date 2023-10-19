@@ -1,13 +1,9 @@
-import os
 from datetime import datetime
-
-import torch
-import numpy as np
 
 from Data.DataManager import DataManager
 from Log.LogManager import LogManager
-from Units.MixedInputMultipleOutput.Env import Env
-from Units.MixedInputMultipleOutput.Agent import PPO
+from Units.MixedInputMultipleOutput.Base.Env import Env
+from Units.MixedInputMultipleOutput.Base.Agent import PPO
 
 
 LOAD_PREVIOUS_DATA = False

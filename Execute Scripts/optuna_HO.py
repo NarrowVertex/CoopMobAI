@@ -5,8 +5,8 @@ import joblib
 
 from Data.DataManager import DataManager
 from Log.LogManager import LogManager
-from Units.MixedInputMultipleOutput.Agent import PPO
-from Units.MixedInputMultipleOutput.Env import Env
+from Units.MixedInputMultipleOutput.Base.Agent import PPO
+from Units.MixedInputMultipleOutput.Base.Env import Env
 
 
 def train():
