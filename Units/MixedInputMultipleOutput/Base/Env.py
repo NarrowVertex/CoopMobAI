@@ -25,7 +25,7 @@ class Env:
         self.initialize_agent_pos()
         self.randomize_target_pos()
 
-        # self.make_trace_map()
+        self.make_trace_map()
 
         # [ right, up, left, down ]
         return self.get_state()
@@ -113,7 +113,6 @@ class Env:
         channel.append(target_pos_onehot)
         # channel.append([])
         channel.append(self.trace_map)
-
         map_state = np.reshape(channel, (1, len(channel), self.width, self.height))
 
         dx_float = (self.target_pos[0] - self.agent_pos[0]) / self.width
