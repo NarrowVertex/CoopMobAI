@@ -1,3 +1,5 @@
+import copy
+
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
@@ -34,8 +36,11 @@ def reverse_map_data(matrix):
     return matrix
 
 def find_path(matrix, start_point, end_point):
+    matrix = copy.deepcopy(matrix)
     matrix = reverse_map_data(matrix)
     grid = Grid(matrix=matrix)
+
+    height = len(matrix)
 
     start = grid.node(start_point[0], start_point[1])
     end = grid.node(end_point[0], end_point[1])
@@ -43,15 +48,17 @@ def find_path(matrix, start_point, end_point):
     finder = AStarFinder(diagonal_movement=DiagonalMovement.always)
     path, runs = finder.find_path(start, end, grid)
 
+    # print('operations:', runs, 'path length:', len(path))
+    # print(grid.grid_str(path=path, start=start, end=end))
+
     """
-    print('operations:', runs, 'path length:', len(path))
-    print(grid.grid_str(path=path, start=start, end=end))
     print()
     """
 
     points = []
     for point in path:
-        points.append((point.x, -point.y))
+        points.append((point.x, point.y))
+        # points.append((point.x, (height-1) - point.y))
 
     return points
 

@@ -92,7 +92,9 @@ def train():
     while time_step <= max_training_timesteps:
 
         state = env.reset()
-        points = PathFinder.find_path(env.map, env.agent_pos, env.target_pos)
+        path_data = env.path_data
+        train_data = env.path_train_data
+        """
         curved_points = CurveMaker.make_curve(points, 9, 0.1)
 
         x, y = zip(*points)
@@ -112,6 +114,7 @@ def train():
         plt.grid(True)
         plt.legend()
         plt.show()
+        """
 
         current_ep_reward = 0
 
@@ -121,27 +124,35 @@ def train():
         log_manager.debug(f"trace_map : {env.trace_map}")
         log_manager.debug(f"target_pos : {env.target_pos}")
 
-        for t in range(1, max_ep_len+1):
+        for t in range(1, len(train_data)+1):
+            data = train_data[t-1]
+            state, action, reward, done = data
+            # (curr_state, next_state) = state
+
+            curr_point, next_point, angle, accumulated_angle, _, _ = path_data[t-1]
+
             log_manager.debug(f"episode : {i_episode}, time_step : {time_step}")
 
             # select action with policy
-            old_state = state
-            action = ppo_agent.select_action(state)
+            # action, action_logprob, state_val = ppo_agent.select_action(state)
+            state, action, action_logprob, state_val = ppo_agent.fake_select_action(state, action)
+            ppo_agent.remember(state, action, action_logprob, state_val)
+            action = [action[0].item(), action[1].item()]
 
-            log_manager.debug(f"last_agent_pos : {env.agent_pos}, last_agent_angle : {env.agent_angle}")
+            log_manager.debug(f"last_agent_pos : {list(curr_point)}, last_agent_angle : {accumulated_angle - angle}")
             log_manager.debug(f"action: {action}")
 
-            state, reward, done, _ = env.step(action)
-
-            log_manager.debug(f"curr_agent_pos : {env.agent_pos}, curr_agent_angle : {env.agent_angle}")
-            log_manager.debug(f"reward: {reward}, done: {done}")
-
-            # log_manager.debug(f"old state: {old_state}")
-            # log_manager.debug(f"new state: {state}")
+            # state, reward, done, _ = env.step(action)
 
             if t == max_ep_len:
                 reward = -1
                 done = True
+
+            log_manager.debug(f"curr_agent_pos : {list(next_point)}, curr_agent_angle : {accumulated_angle}")
+            log_manager.debug(f"reward: {reward}, done: {done}")
+
+            # log_manager.debug(f"old state: {old_state}")
+            # log_manager.debug(f"new state: {state}")
 
             # saving reward and is_terminals
             ppo_agent.buffer.rewards.append(reward)
@@ -173,7 +184,6 @@ def train():
                 print_avg_reward = print_running_reward / print_running_episodes
                 print_avg_reward = round(print_avg_reward, 2)
 
-                # print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward))
                 log_manager.print(f"Episode : {i_episode} \t\t Timestep : {time_step} \t\t Average Reward : {print_avg_reward}", "info")
 
                 print_running_reward = 0

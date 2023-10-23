@@ -3,6 +3,9 @@ import math
 from math import cos, sin, radians, atan2, degrees
 
 def reshape_points(points, interval):
+    if len(points) == 0:
+        print("points is empty!!!")
+
     # 새로운 좌표 리스트 초기화
     new_points = []
 
@@ -31,6 +34,41 @@ def reshape_points(points, interval):
 
     return new_points
 
+def reconstruct_points(points, init_angle, height=0):
+    data = []
+    last_angle = init_angle
+    accumulated_angle = init_angle
+    for i in range(len(points) - 1):
+        """
+        curr_point = [points[i][0], points[i][1]]
+        next_point = [points[i + 1][0], points[i + 1][1]]
+        """
+        original_curr_point = points[i]
+        original_next_point = points[i + 1]
+
+        # convert to calculate angles
+        curr_point = None
+        next_point = None
+        if height != 0:
+            curr_point = [points[i][0], (height-1) - points[i][1]]
+            next_point = [points[i + 1][0], (height-1) - points[i + 1][1]]
+        else:
+            curr_point = [points[i][0], points[i][1]]
+            next_point = [points[i + 1][0], points[i + 1][1]]
+
+        angle1 = last_angle
+        angle2 = round(get_angle(curr_point, next_point))
+        angle = int(angle2 - angle1)
+        accumulated_angle += angle
+
+        data.append([original_curr_point, original_next_point, angle, accumulated_angle, 0, False])
+        last_angle = angle2
+        # print(f"{original_curr_point}  {original_next_point}  {angle1} {angle2} {angle}")
+    return data
+
+def get_angle(pos1, pos2):
+    return degrees(- atan2(pos2[1] - pos1[1], pos2[0] - pos1[0]))
+
 def check_curve(points):
     selected_points = []
 
@@ -41,8 +79,8 @@ def check_curve(points):
         x_next, y_next = points[i + 1]
 
         # 현재 좌표와 앞 좌표, 현재 좌표와 뒤 좌표를 이용하여 각도 계산
-        angle1 = degrees(atan2(y_current - y_prev, x_current - x_prev))
-        angle2 = degrees(atan2(y_next - y_current, x_next - x_current))
+        angle1 = get_angle((x_prev, y_prev), (x_current, y_current))
+        angle2 = get_angle((x_current, y_current), (x_next, y_next))
 
         diff = abs(angle2 - angle1)
         # 각도가 0도 이상인 경우 현재 좌표를 결과 리스트에 추가

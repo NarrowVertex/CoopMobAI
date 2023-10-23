@@ -151,13 +151,43 @@ class ActorCritic(nn.Module):
         move_dist = Categorical(move_action_probs)
         move_action = move_dist.sample()
         move_action_logprob = move_dist.log_prob(move_action)
-
+        """
+        print(move_dist)
+        print(move_action)
+        print(move_action_logprob)
+        """
         rotate_dist = Categorical(rotate_action_probs)
         rotate_action = rotate_dist.sample()
         rotate_action_logprob = rotate_dist.log_prob(rotate_action)
 
         move_state_val, rotate_state_val = self.critic(state)
 
+        return [move_action.detach(), rotate_action.detach()], \
+            [move_action_logprob.detach(), rotate_action_logprob.detach()], \
+            [move_state_val.detach(), rotate_state_val.detach()]
+
+    def fake_act(self, state, action):
+        move_action_probs = [1 if x == action[0] else 0 for x in range(2)]
+        rotate_action_probs = [1 if x == action[1] else 0 for x in range(3)]
+
+        move_action_probs = torch.tensor([move_action_probs])
+        rotate_action_probs = torch.tensor([rotate_action_probs])
+
+        move_dist = Categorical(move_action_probs)
+        move_action = move_dist.sample()
+        move_action_logprob = move_dist.log_prob(move_action)
+
+        rotate_dist = Categorical(rotate_action_probs)
+        rotate_action = rotate_dist.sample()
+        rotate_action_logprob = rotate_dist.log_prob(rotate_action)
+
+        move_state_val, rotate_state_val = self.critic(state)
+        """
+        print(move_dist)
+        print(move_action)
+        print(move_action_logprob)
+        
+        """
         return [move_action.detach(), rotate_action.detach()], \
             [move_action_logprob.detach(), rotate_action_logprob.detach()], \
             [move_state_val.detach(), rotate_state_val.detach()]
@@ -209,6 +239,18 @@ class PPO:
             state[1] = torch.FloatTensor(state[1]).to(device)
             action, action_logprob, state_val = self.policy_old.act(state)
 
+        return action, action_logprob, state_val
+        # return [action[0].item(), action[1].item()]
+
+    def fake_select_action(self, state, action):
+        with torch.no_grad():
+            state[0] = torch.FloatTensor(state[0]).to(device)
+            state[1] = torch.FloatTensor(state[1]).to(device)
+            action, action_logprob, state_val = self.policy_old.fake_act(state, action)
+
+        return state, action, action_logprob, state_val
+
+    def remember(self, state, action, action_logprob, state_val):
         self.buffer.move_states.append(state[0])
         self.buffer.move_actions.append(action[0])
         self.buffer.move_logprobs.append(action_logprob[0])
@@ -218,8 +260,6 @@ class PPO:
         self.buffer.rotate_actions.append(action[1])
         self.buffer.rotate_logprobs.append(action_logprob[1])
         self.buffer.rotate_state_values.append(state_val[1])
-
-        return [action[0].item(), action[1].item()]
 
     def update(self):
         # Monte Carlo estimate of returns
