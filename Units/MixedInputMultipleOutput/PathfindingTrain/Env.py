@@ -34,7 +34,6 @@ class PathFindingTrainEnv:
         self.randomize_target_pos()
 
         self.make_trace_map()
-        self.make_path_train_data()
 
         # [ right, up, left, down ]
         return self.get_state(self.agent_pos, self.target_pos)

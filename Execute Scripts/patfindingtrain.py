@@ -92,6 +92,8 @@ def train():
     while time_step <= max_training_timesteps:
 
         state = env.reset()
+        env.make_path_train_data()
+
         path_data = env.path_data
         train_data = env.path_train_data
         """
