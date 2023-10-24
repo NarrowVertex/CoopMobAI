@@ -5,6 +5,7 @@ from Log.LogManager import LogManager
 from Units.MixedInputMultipleOutput.PathfindingTrain.Env import PathFindingTrainEnv
 from Units.MixedInputMultipleOutput.PathfindingTrain.Agent import PPO
 from Utils import PathFinder, CurveMaker
+from Utils.TimeCheck import TimeChecker
 
 # SAVE_DIRECTORY_PATH = "/content/drive/MyDrive/RL/Simulation3"
 SAVE_DIRECTORY_PATH = ".."
@@ -70,10 +71,14 @@ def test():
     start_time = datetime.now().replace(microsecond=0)
     log_manager.print(f"Started testing at (GMT) : {start_time}", "info")
 
+    time_checker = TimeChecker()
+
     rewards = []
     total_rewards = []
     # training loop
     while i_episode < max_test_episode_count:
+
+        time_checker.start("reset")
 
         state = env.reset()
 
@@ -84,6 +89,9 @@ def test():
         log_manager.debug(f"target_pos : {env.target_pos}")
 
         log_manager.print(f"Start test episode {i_episode} - {time_step}", "info")
+
+        time_checker.end("reset")
+        time_checker.start("test")
 
         rewards.append([])
         total_rewards.append([])
@@ -119,12 +127,14 @@ def test():
         i_episode += 1
 
         log_manager.print(f"End test episode [{i_episode} - {time_step}] with reward [{sum(rewards[-1])}]", "info")
+        time_checker.end("test")
 
     for i in range(len(rewards)):
         total_rewards[i] = sum(rewards[i])
     average_reward = sum(total_rewards) / len(total_rewards)
 
     print(f"Average Reward: {average_reward}")
+    time_checker.summary()
 
     # 그래프 그리기
     from matplotlib import pyplot as plt
