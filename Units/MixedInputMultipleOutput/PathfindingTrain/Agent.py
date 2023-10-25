@@ -170,8 +170,8 @@ class ActorCritic(nn.Module):
         move_action_probs = [1 if x == action[0] else 0 for x in range(2)]
         rotate_action_probs = [1 if x == action[1] else 0 for x in range(3)]
 
-        move_action_probs = torch.tensor([move_action_probs])
-        rotate_action_probs = torch.tensor([rotate_action_probs])
+        move_action_probs = torch.FloatTensor([move_action_probs]).to(device)
+        rotate_action_probs = torch.FloatTensor([rotate_action_probs]).to(device)
 
         move_dist = Categorical(move_action_probs)
         move_action = move_dist.sample()
