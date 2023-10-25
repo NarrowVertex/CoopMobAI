@@ -13,6 +13,7 @@ class DataManager:
         self.save_directory = save_directory_path  # "../Saves/"
         self.checkpoints_directory = "checkpoints/"
         self.debugs_directory = "debugs/"
+        self.test_debugs_directory = "test_debugs/"
         self.description_file_name = "description.txt"
         self.hyperparameters_file_name = "hyperparameters.txt"
         self.options_file_name = "options.txt"
@@ -49,6 +50,7 @@ class DataManager:
         self.save_directory += f"{env_name}/{significant_id}/"
         self.checkpoints_directory = self.save_directory + self.checkpoints_directory
         self.debugs_directory = self.save_directory + self.debugs_directory
+        self.test_debugs_directory = self.save_directory + self.test_debugs_directory
 
         self.description_file_name = self.save_directory + self.description_file_name
         self.hyperparameters_file_name = self.save_directory + self.hyperparameters_file_name
@@ -57,11 +59,20 @@ class DataManager:
 
     def load(self, model):
         # print(self.checkpoints_directory, next(os.walk(self.checkpoints_directory)))
-        last_checkpoint_name = next(os.walk(self.checkpoints_directory))[1][-1]
+        file_names = next(os.walk(self.checkpoints_directory))[1]
+        last_time_step = -1
+        last_episode = -1
+        last_checkpoint_name = None
+        for file_name in file_names:
+            tokens = file_name.split("_")
+            time_step = int(tokens[0])
+            episode = int(tokens[1])
+            if episode > last_episode:
+                last_episode = episode
+                last_time_step = time_step
+                last_checkpoint_name = file_name
 
-        tokens = last_checkpoint_name.split("_")
-        last_time_step = int(tokens[0])
-        last_episode = int(tokens[1])
+        # last_checkpoint_name = next(os.walk(self.checkpoints_directory))[1][-1]
 
         self.hyperparameters_file = open_file(self.hyperparameters_file_name)
         self.options_file = open_file(self.options_file_name)
@@ -140,6 +151,7 @@ class DataManager:
         # episodes directory
         mkdir(self.checkpoints_directory)
         mkdir(self.debugs_directory)
+        mkdir(self.test_debugs_directory)
 
         self.description_file = create_file(self.description_file_name)
         self.hyperparameters_file = create_file(self.hyperparameters_file_name)
@@ -169,6 +181,12 @@ class DataManager:
     def create_debug_file(self, episode, time_step):
         debug_file_name = f"{episode}.csv"
         debug_file_fullname = self.debugs_directory + debug_file_name
+        self.debug_file = create_write_only_file(debug_file_fullname)
+        return self.debug_file
+
+    def create_test_debug_file(self, episode, time_step):
+        debug_file_name = f"{episode}.csv"
+        debug_file_fullname = self.test_debugs_directory + debug_file_name
         self.debug_file = create_write_only_file(debug_file_fullname)
         return self.debug_file
 

@@ -2,9 +2,10 @@ from datetime import datetime
 
 from Data.DataManager import DataManager
 from Log.LogManager import LogManager
-from Units.MixedInputMultipleOutput.Base.Env import Env
-from Units.MixedInputMultipleOutput.Base.Agent import PPO
-
+from Units.MixedInputMultipleOutput.PathfindingTrain.Env import PathFindingTrainEnv
+from Units.MixedInputMultipleOutput.PathfindingTrain.Agent import PPO
+from Utils import PathFinder, CurveMaker
+from Utils.TimeCheck import TimeChecker
 
 LOAD_PREVIOUS_DATA = False
 # SAVE_DIRECTORY_PATH = "/content/drive/MyDrive/RL/Simulation3"
@@ -43,7 +44,11 @@ def train():
 
     #####################################################
 
-    env = Env(save_directory_path=SAVE_DIRECTORY_PATH + "/Game Data/map/empty_map.txt")
+    time_checker = TimeChecker()
+
+    time_checker.start("init")
+
+    env = PathFindingTrainEnv(save_directory_path=SAVE_DIRECTORY_PATH + "/Game Data/map/empty_map.txt")
     state_dim = env.observation_space
     action_dim = env.action_space
 
@@ -77,6 +82,8 @@ def train():
     init_type = "Load" if LOAD_PREVIOUS_DATA else "Create"
     log_manager.print(f"Init type : {init_type}, Significant ID : {significant_id}, Env : {env_name}", "info")
 
+    time_checker.end("init")
+
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
     log_manager.print(f"Started training at (GMT) : {start_time}", "info")
@@ -91,7 +98,35 @@ def train():
     # training loop
     while time_step <= max_training_timesteps:
 
+        time_checker.start("reset")
+
         state = env.reset()
+        env.make_path_train_data()
+
+        path_data = env.path_data
+        train_data = env.path_train_data
+        """
+        curved_points = CurveMaker.make_curve(points, 9, 0.1)
+
+        x, y = zip(*points)
+        curved_x, curved_y = zip(*curved_points)
+
+        # 그래프 그리기
+        from matplotlib import pyplot as plt
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(x, y, marker='o', linestyle='-', color='b', zorder=2)  # 선과 점 그리기
+        plt.plot(curved_x, curved_y, marker='.', linestyle='-', color='r', zorder=1)  # 선과 점 그리기
+        # plt.scatter(x, y, c='r', marker='o', label='scatter')  # 꼭짓점 표시
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.axis('equal')
+        plt.title('Coordinate List Graph')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+        """
+
         current_ep_reward = 0
 
         log_manager.start_episode(i_episode, time_step)
@@ -100,27 +135,44 @@ def train():
         log_manager.debug(f"trace_map : {env.trace_map}")
         log_manager.debug(f"target_pos : {env.target_pos}")
 
-        for t in range(1, max_ep_len+1):
+        time_checker.end("reset")
+
+        for t in range(1, len(train_data)+1):
+            data = train_data[t-1]
+            state, action, reward, done = data
+            # (curr_state, next_state) = state
+
+            curr_point, next_point, angle, accumulated_angle, _, _ = path_data[t-1]
+
             log_manager.debug(f"episode : {i_episode}, time_step : {time_step}")
 
-            # select action with policy
-            old_state = state
-            action = ppo_agent.select_action(state)
+            time_checker.start("select_action")
 
-            log_manager.debug(f"last_agent_pos : {env.agent_pos}, last_agent_angle : {env.agent_angle}")
+            # select action with policy
+            # action, action_logprob, state_val = ppo_agent.select_action(state)
+
+            # agent 안에 있는 policy_old를 여러개 복사해서 env와 쌍맺음하여 multiprocessing에 집어넣으면 반복적으로 뽑아낼 수 있음
+
+            state, action, action_logprob, state_val = ppo_agent.fake_select_action(state, action)
+            ppo_agent.remember(state, action, action_logprob, state_val)
+            action = [action[0].item(), action[1].item()]
+
+            log_manager.debug(f"last_agent_pos : {list(curr_point)}, last_agent_angle : {accumulated_angle - angle}")
             log_manager.debug(f"action: {action}")
 
-            state, reward, done, _ = env.step(action)
+            time_checker.end("select_action")
 
-            log_manager.debug(f"curr_agent_pos : {env.agent_pos}, curr_agent_angle : {env.agent_angle}")
-            log_manager.debug(f"reward: {reward}, done: {done}")
-
-            # log_manager.debug(f"old state: {old_state}")
-            # log_manager.debug(f"new state: {state}")
+            # state, reward, done, _ = env.step(action)
 
             if t == max_ep_len:
                 reward = -1
                 done = True
+
+            log_manager.debug(f"curr_agent_pos : {list(next_point)}, curr_agent_angle : {accumulated_angle}")
+            log_manager.debug(f"reward: {reward}, done: {done}")
+
+            # log_manager.debug(f"old state: {old_state}")
+            # log_manager.debug(f"new state: {state}")
 
             # saving reward and is_terminals
             ppo_agent.buffer.rewards.append(reward)
@@ -131,19 +183,12 @@ def train():
 
             # update PPO agent
             if time_step % update_timestep == 0:
+                time_checker.start("update")
                 ppo_agent.update()
+                time_checker.end("update")
 
-            # log in logging file
-            if time_step % log_freq == 0:
-
-                # log average reward till last episode
-                log_avg_reward = log_running_reward / log_running_episodes
-                log_avg_reward = round(log_avg_reward, 4)
-
-                # log_manager.print(f"{i_episode}, {time_step}, {log_avg_reward}", "info")
-
-                log_running_reward = 0
-                log_running_episodes = 0
+                time_checker.summary()
+                time_checker.reset()
 
             # printing average reward
             if time_step % print_freq == 0:
@@ -152,7 +197,6 @@ def train():
                 print_avg_reward = print_running_reward / print_running_episodes
                 print_avg_reward = round(print_avg_reward, 2)
 
-                # print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward))
                 log_manager.print(f"Episode : {i_episode} \t\t Timestep : {time_step} \t\t Average Reward : {print_avg_reward}", "info")
 
                 print_running_reward = 0
@@ -160,7 +204,9 @@ def train():
 
             # save model weights
             if time_step % save_model_freq == 0:
+                time_checker.start("save")
                 data_manager.checkout(i_episode, time_step, ppo_agent, elapsed_time=datetime.now().replace(microsecond=0) - start_time)
+                time_checker.end("save")
 
             # break; if the episode is over
             if done:

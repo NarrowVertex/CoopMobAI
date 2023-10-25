@@ -32,6 +32,12 @@ class LogManager:
         self.debug_file.write(message)
         self.debug_file.flush()
 
+    def start_test_episode(self, episode, timestep):
+        self.debug_file = self.data_manager.create_test_debug_file(episode, timestep)
+        message = f"start test episode : {episode} - {timestep}\n"
+        self.debug_file.write(message)
+        self.debug_file.flush()
+
     def debug(self, context):
         message = ""
         message += context
